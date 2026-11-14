@@ -17,6 +17,17 @@ CREATE TABLE IF NOT EXISTS admins (
 ) ENGINE=InnoDB;
 
 -- ------------------------------------------------------------
+-- Failed admin logins (used to rate-limit the login page: 5 failures / 15 minutes per IP).
+-- Only a hash of the IP address is stored.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS login_attempts (
+  id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  ip_hash      CHAR(64)  NOT NULL,
+  attempted_at DATETIME  NOT NULL,
+  INDEX idx_ip_time (ip_hash, attempted_at)
+) ENGINE=InnoDB;
+
+-- ------------------------------------------------------------
 -- Website content (posts)
 -- Dropped first so that re-importing this file resets the posts to the data below.
 -- ------------------------------------------------------------

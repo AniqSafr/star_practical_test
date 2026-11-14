@@ -43,3 +43,49 @@ function csrf_check(mixed $token): bool
         && !empty($_SESSION['csrf'])
         && hash_equals($_SESSION['csrf'], $token);
 }
+
+//  Login rate limit: after LOGIN_MAX_FAILS failed attempts from one IP address within LOGIN_WINDOW seconds, that IP is locked out until the oldest of those failures expires.
+//  Only a hash of the IP is stored.
+const LOGIN_MAX_FAILS = 5;
+const LOGIN_WINDOW    = 900;   // 15 minutes
+
+function login_client_key(): string
+{
+    //REMOTE_ADDR is used on purpose: headers such as X-Forwarded-For can be faked by the client (behind a trusted proxy, map the real IP here).
+    return hash('sha256', (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown')); 
+}
+
+// Seconds the visitor still has to wait (0 = not locked).
+function login_locked_seconds(): int
+{
+    $now  = time();
+    $stmt = db()->prepare(
+        'SELECT attempted_at FROM login_attempts
+         WHERE ip_hash = ? AND attempted_at > ? ORDER BY attempted_at DESC LIMIT ' . LOGIN_MAX_FAILS
+    );
+    $stmt->execute([login_client_key(), date('Y-m-d H:i:s', $now - LOGIN_WINDOW)]);
+    $rows = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+    if (count($rows) < LOGIN_MAX_FAILS) {
+        return 0;
+    }
+
+    // the lock ends when the oldest of the last LOGIN_MAX_FAILS failures leaves the window
+    return max(1, (int) strtotime((string) end($rows)) + LOGIN_WINDOW - $now);
+}
+
+function login_record_failure(): void
+{
+    $pdo = db();
+    $pdo->prepare('INSERT INTO login_attempts (ip_hash, attempted_at) VALUES (?, ?)')
+        ->execute([login_client_key(), date('Y-m-d H:i:s')]);
+
+    // housekeeping: forget attempts older than one day
+    $pdo->prepare('DELETE FROM login_attempts WHERE attempted_at < ?')
+        ->execute([date('Y-m-d H:i:s', time() - 86400)]);
+}
+
+function login_clear_failures(): void
+{
+    db()->prepare('DELETE FROM login_attempts WHERE ip_hash = ?')->execute([login_client_key()]);
+}

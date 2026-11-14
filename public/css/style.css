@@ -179,3 +179,7 @@ td.url .muted { margin: 0; font-size: .8rem; }
 @media (max-width: 900px) {
     .chart-grid { grid-template-columns: 1fr; }
 }
+
+/* disabled buttons / fields (e.g. the login form while the visitor is locked out) */
+.btn:disabled, .btn[disabled] { opacity: .55; cursor: not-allowed; }
+.login-box input:disabled { background: #eef0f2; cursor: not-allowed; }
