@@ -262,13 +262,43 @@ function stats_collect(array $f): array
     ];
 }
 
-// Pages to choose from in the "Page" filter.
-function stats_page_options(): array
+// Pages for the "Page" filter's search box. Returns only a few matches, so the list stays small however many posts there are.
+// Empty search = the most recently shared pages. Searches the title and the URL.
+function stats_page_search(string $q, int $limit = 15): array
 {
-    return db()->query(
-        'SELECT page_url, MAX(page_title) AS page_title FROM share_clicks
-         GROUP BY page_url ORDER BY MAX(page_title), page_url LIMIT 300'
-    )->fetchAll();
+    $q     = trim($q);
+    $where = '';
+    $args  = [];
+
+    if ($q !== '') {
+        // "|" is the escape character, so a typed % or _ is searched as normal text
+        $like  = '%' . str_replace(['|', '%', '_'], ['||', '|%', '|_'], $q) . '%';
+        $where = "WHERE page_title LIKE ? ESCAPE '|' OR page_url LIKE ? ESCAPE '|'";
+        $args  = [$like, $like];
+    }
+
+    $st = db()->prepare(
+        "SELECT page_url, MAX(page_title) AS page_title, MAX(clicked_at) AS last_click
+         FROM share_clicks $where
+         GROUP BY page_url ORDER BY last_click DESC LIMIT " . max(1, min(50, $limit))
+    );
+    $st->execute($args);
+
+    return $st->fetchAll();
+}
+
+// Text shown in the Page box for the page that is filtered now (the title, or the URL if there is no title).
+function stats_page_label(string $url): string
+{
+    if ($url === '') {
+        return '';
+    }
+
+    $st = db()->prepare('SELECT MAX(page_title) FROM share_clicks WHERE page_url = ?');
+    $st->execute([$url]);
+    $title = trim((string) $st->fetchColumn());
+
+    return $title !== '' ? $title : $url;
 }
 
 // Everything the charts' JavaScript needs, as plain arrays.

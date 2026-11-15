@@ -29,6 +29,7 @@
     };
 
     form.addEventListener('change', function (e) {
+      if (e.target.id === 'page-search') { return; }   // the page box submits by itself when a page is picked
       if (multi && multi.contains(e.target)) {      // ticking several boxes: wait until the dropdown closes
         multiChanged = true;
         updateSummary();
@@ -53,6 +54,119 @@
         if (e.key === 'Escape' && multi.open) { closeMulti(); }
       });
     }
+  }
+
+  // Page filter: a search box. It asks the server for a few matches, so it stays fast with thousands of pages.
+  var pInput = document.getElementById('page-search');
+  if (form && pInput && window.fetch) {
+    var pValue = document.getElementById('page-value');
+    var pList  = document.getElementById('page-list');
+    var pClear = document.getElementById('page-clear');
+    var pLabel = pInput.value;      // text of the page that is selected now
+    var timer = null, seq = 0, active = -1;
+
+    var setOpen = function (open) {
+      pList.hidden = !open;
+      pInput.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (!open) { active = -1; }
+    };
+
+    // pick a page ('' = all pages) and reload with the new filter
+    var choose = function (url, label) {
+      var changed = url !== pValue.value;
+      pValue.value = url;
+      pInput.value = label;
+      pLabel = label;
+      setOpen(false);
+      if (changed) { form.submit(); }
+    };
+
+    var highlight = function (i) {
+      var items = pList.children;
+      if (!items.length) { return; }
+      active = (i + items.length) % items.length;
+      for (var k = 0; k < items.length; k++) {
+        items[k].classList.toggle('is-active', k === active);
+        items[k].setAttribute('aria-selected', k === active ? 'true' : 'false');
+      }
+      items[active].scrollIntoView({ block: 'nearest' });
+    };
+
+    var addItem = function (url, title, sub) {
+      var li = document.createElement('li');
+      li.setAttribute('role', 'option');
+      li.dataset.url = url;
+      li.dataset.label = title;
+      var t = document.createElement('span');   // textContent, so a title is never read as HTML
+      t.className = 'combo-title';
+      t.textContent = title;
+      li.appendChild(t);
+      if (sub) {
+        var u = document.createElement('span');
+        u.className = 'combo-sub';
+        u.textContent = sub;
+        li.appendChild(u);
+      }
+      pList.appendChild(li);
+    };
+
+    var search = function (q) {
+      var mine = ++seq;     // ignore answers that arrive late
+      fetch('pages.php?q=' + encodeURIComponent(q), { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : []; })
+        .then(function (rows) {
+          if (mine !== seq) { return; }
+          pList.innerHTML = '';
+          addItem('', 'All pages', '');
+          rows.forEach(function (row) {
+            addItem(row.url, row.title !== '' ? row.title : row.url, row.title !== '' ? row.url : '');
+          });
+          if (!rows.length && q !== '') {
+            var none = document.createElement('li');
+            none.className = 'combo-empty';
+            none.textContent = 'No pages match "' + q + '"';
+            pList.appendChild(none);
+          }
+          setOpen(true);
+        })
+        .catch(function () { /* if the search fails, the current filter still works */ });
+    };
+
+    pInput.addEventListener('focus', function () { pInput.select(); search(''); });
+    pInput.addEventListener('input', function () {
+      clearTimeout(timer);
+      var q = pInput.value.trim();
+      timer = setTimeout(function () { search(q); }, 250);   // wait a moment while the admin is still typing
+    });
+    pInput.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (pList.hidden) { search(pInput.value.trim()); } else { highlight(active + 1); }
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        highlight(active - 1);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();   // never submit the form by accident
+        if (!pList.hidden && active >= 0) {
+          var li = pList.children[active];
+          choose(li.dataset.url, li.dataset.url === '' ? '' : li.dataset.label);
+        }
+      } else if (e.key === 'Escape') {
+        setOpen(false);
+        pInput.value = pLabel;
+      }
+    });
+    pList.addEventListener('mousedown', function (e) {   // mousedown, because it happens before the box loses focus
+      var li = e.target.closest ? e.target.closest('li[role=option]') : null;
+      if (!li) { return; }
+      e.preventDefault();
+      choose(li.dataset.url, li.dataset.url === '' ? '' : li.dataset.label);
+    });
+    pInput.addEventListener('blur', function () {
+      setOpen(false);
+      pInput.value = pLabel;    // text that was typed but not picked is dropped
+    });
+    pClear.addEventListener('click', function () { choose('', ''); });
   }
 
   // ---- Charts ----

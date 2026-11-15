@@ -132,6 +132,7 @@ td.url .muted { margin: 0; font-size: .8rem; }
 .field input, .field select { padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: .92rem; color: var(--text); background: #fff; min-width: 140px; }
 .field-wide { flex: 1 1 240px; min-width: 0; }
 .field-wide select { width: 100%; min-width: 0; }
+.field-wide input[type=text] { width: 100%; min-width: 0; }
 .filters-label { font-size: .8rem; color: var(--muted); align-self: center; margin-right: 4px; }
 .pchip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; font-size: .85rem; cursor: pointer; background: #fff; }
 .pchip input { margin: 0; }
@@ -183,3 +184,17 @@ td.url .muted { margin: 0; font-size: .8rem; }
 /* disabled buttons / fields (e.g. the login form while the visitor is locked out) */
 .btn:disabled, .btn[disabled] { opacity: .55; cursor: not-allowed; }
 .login-box input:disabled { background: #eef0f2; cursor: not-allowed; }
+
+/* ---------- Admin: page search box ---------- */
+.combo { position: relative; }
+.combo input[type=text] { padding-right: 30px; text-overflow: ellipsis; }
+.combo-clear { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; border: 0; border-radius: 50%; background: none; color: var(--muted); font-size: 1.2rem; line-height: 1; cursor: pointer; }
+.combo-clear:hover { background: #eef0f2; }
+.combo-list { position: absolute; z-index: 30; top: calc(100% + 4px); left: 0; right: 0; margin: 0; padding: 6px; list-style: none; max-height: 320px; overflow: auto;
+    background: #fff; border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px rgba(15, 23, 42, .14); }
+.combo-list li { display: flex; flex-direction: column; padding: 7px 8px; border-radius: 6px; cursor: pointer; color: var(--text); font-size: .92rem; }
+.combo-list li:hover, .combo-list li.is-active { background: #f1f4f8; }
+.combo-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.combo-sub { color: var(--muted); font-size: .78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.combo-list .combo-empty { color: var(--muted); cursor: default; }
+.combo-list .combo-empty:hover { background: none; }

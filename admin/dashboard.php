@@ -12,7 +12,7 @@ $chart       = stats_chart_data($r);
 $total       = $r['total'];
 $platforms   = share_platforms();
 $meta        = stats_series_meta();
-$pageOptions = stats_page_options();
+$pageLabel   = stats_page_label($f['page']);
 
 $fromStr = $f['from']->format('Y-m-d');
 $toStr   = $f['to']->format('Y-m-d');
@@ -84,15 +84,17 @@ $rangeText = $f['from']->format('j M Y') . ' – ' . $f['to']->format('j M Y');
             <label class="field">To
                 <input type="date" name="to" value="<?= e($toStr) ?>" max="<?= e($today) ?>">
             </label>
-            <label class="field field-wide">Page
-                <select name="page">
-                    <option value="">All pages</option>
-                    <?php foreach ($pageOptions as $opt): ?>
-                        <?php $label = trim((string) $opt['page_title']) !== '' ? $opt['page_title'] : $opt['page_url']; ?>
-                        <option value="<?= e($opt['page_url']) ?>"<?= $f['page'] === $opt['page_url'] ? ' selected' : '' ?>><?= e(short_text((string) $label, 60)) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </label>
+            <div class="field field-wide" id="page-field">
+                <label for="page-search">Page</label>
+                <div class="combo">
+                    <input type="hidden" name="page" id="page-value" value="<?= e($f['page']) ?>">
+                    <input type="text" id="page-search" role="combobox" aria-expanded="false" aria-controls="page-list"
+                           aria-autocomplete="list" autocomplete="off" maxlength="100"
+                           placeholder="All pages (type to search)" value="<?= e($pageLabel) ?>">
+                    <button type="button" class="combo-clear" id="page-clear" aria-label="Show all pages"<?= $f['page'] === '' ? ' hidden' : '' ?>>&times;</button>
+                    <ul class="combo-list" id="page-list" role="listbox" hidden></ul>
+                </div>
+            </div>
             <div class="field field-multi">
                 <span id="platform-label">Social media</span>
                 <details class="multi" id="platform-filter">
