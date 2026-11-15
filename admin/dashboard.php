@@ -22,6 +22,12 @@ $fromStr = $f['from']->format('Y-m-d');
 $toStr   = $f['to']->format('Y-m-d');
 $today   = (new DateTimeImmutable('today'))->format('Y-m-d');
 
+// the "Download CSV" link carries the filters that are applied now
+$exportQuery = http_build_query(array_filter(
+    ['from' => $fromStr, 'to' => $toStr, 'platforms' => $f['platforms'], 'page' => $f['page']],
+    static fn (mixed $v): bool => $v !== '' && $v !== []
+));
+
 $presets = ['7' => 'Last 7 days', '30' => 'Last 30 days', '90' => 'Last 90 days', 'month' => 'This month', 'all' => 'All time'];
 
 // table cell content: just the URL if there is no title.
@@ -134,6 +140,12 @@ $rangeText = $f['from']->format('j M Y') . ' – ' . $f['to']->format('j M Y');
 
     <?php if ($f['note'] !== ''): ?>
         <p class="muted"><?= e($f['note']) ?></p>
+    <?php endif; ?>
+
+    <?php if ($total > 0): ?>
+        <p>
+            <a class="btn btn-light" href="export.php?<?= e($exportQuery) ?>">Download CSV</a>
+        </p>
     <?php endif; ?>
 
     <!-- Numbers -->
