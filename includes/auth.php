@@ -14,9 +14,24 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// An admin who does nothing for this long is logged out (seconds).
+const SESSION_IDLE_LIMIT = 1800;   // 30 minutes
+
 function is_logged_in(): bool
 {
-    return !empty($_SESSION['admin_id']);
+    if (empty($_SESSION['admin_id'])) {
+        return false;
+    }
+
+    $last = (int) ($_SESSION['last_seen'] ?? 0);
+    if ($last > 0 && time() - $last > SESSION_IDLE_LIMIT) {
+        $_SESSION = [];     // idle for too long: forget the login (the next page asks for the password)
+        return false;
+    }
+
+    $_SESSION['last_seen'] = time();
+
+    return true;
 }
 
 // Put this at the top of every admin page that must be protected.
