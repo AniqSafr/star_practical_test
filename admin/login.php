@@ -18,51 +18,58 @@ try {
     error_log('login throttle check failed: ' . $ex->getMessage()); 
 }
 
-if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
-    if (!csrf_check($_POST['csrf'] ?? null)) {
-        $error = 'Your form expired. Please try again.';
-    } elseif ($wait > 0) {
-        // too many failures: do not even look at the password
-        http_response_code(429);
-        header('Retry-After: ' . $wait);
-        $error = 'Too many failed login attempts. Please try again in ' . (int) ceil($wait / 60) . ' minute(s).';
-    } else {
-        $username = $_POST['username'] ?? null;
-        $password = $_POST['password'] ?? null;
-
-        // Validate the input before touching the database
-        if (!is_string($username) || !is_string($password)) {
-            $error = 'Invalid form data.';
-        } elseif (($username = trim($username)) === '' || $password === '') {
-            $error = 'Please enter your username and password.';
-        } elseif (mb_strlen($username) > 50 || strlen($password) > 200) {
-            $error = 'Invalid username or password.';   // too long to be real; same message on purpose
-            login_record_failure();
-        } elseif (!preg_match('/^[A-Za-z0-9_.@-]+$/', $username)) {
-            $error = 'Invalid username or password.';   // letters, numbers and _ . @ - only
-            login_record_failure();
+try {
+    if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+        if (!csrf_check($_POST['csrf'] ?? null)) {
+            $error = 'Your form expired. Please try again.';
+        } elseif ($wait > 0) {
+            // too many failures: do not even look at the password
+            http_response_code(429);
+            header('Retry-After: ' . $wait);
+            $error = 'Too many failed login attempts. Please try again in ' . (int) ceil($wait / 60) . ' minute(s).';
         } else {
-            $stmt = db()->prepare('SELECT id, password_hash FROM admins WHERE username = ?');
-            $stmt->execute([$username]);
-            $admin = $stmt->fetch();
+            $username = $_POST['username'] ?? null;
+            $password = $_POST['password'] ?? null;
 
-            if ($admin && password_verify($password, $admin['password_hash'])) {
-                login_clear_failures();
-                session_regenerate_id(true);   // prevents session fixation
-                $_SESSION['admin_id']   = (int) $admin['id'];
-                $_SESSION['admin_user'] = $username;
-                header('Location: dashboard.php');
-                exit;
+            // Validate the input before touching the database
+            if (!is_string($username) || !is_string($password)) {
+                $error = 'Invalid form data.';
+            } elseif (($username = trim($username)) === '' || $password === '') {
+                $error = 'Please enter your username and password.';
+            } elseif (mb_strlen($username) > 50 || strlen($password) > 200) {
+                $error = 'Invalid username or password.';   // too long to be real; same message on purpose
+                login_record_failure();
+            } elseif (!preg_match('/^[A-Za-z0-9_.@-]+$/', $username)) {
+                $error = 'Invalid username or password.';   // letters, numbers and _ . @ - only
+                login_record_failure();
+            } else {
+                $stmt = db()->prepare('SELECT id, password_hash FROM admins WHERE username = ?');
+                $stmt->execute([$username]);
+                $admin = $stmt->fetch();
+
+                if ($admin && password_verify($password, $admin['password_hash'])) {
+                    login_clear_failures();
+                    session_regenerate_id(true);   // prevents session fixation
+                    $_SESSION['admin_id']   = (int) $admin['id'];
+                    $_SESSION['admin_user'] = $username;
+                    header('Location: dashboard.php');
+                    exit;
+                }
+
+                login_record_failure();
+                $error = 'Invalid username or password.';
             }
-
-            login_record_failure();
-            $error = 'Invalid username or password.';
         }
     }
+} catch (PDOException $ex) {
+    // the database is down or a query failed: say so, never show the PHP error
+    error_log('login failed: ' . $ex->getMessage());
+    http_response_code(503);
+    $error = 'Login is temporarily unavailable. Please try again in a moment.';
 }
 
 // Re-check after this request: the failure above may have been the last allowed attempt.
-if ($wait === 0 && $error !== '' && $error !== 'Your form expired. Please try again.') {
+if ($wait === 0 && $error !== '' && $error !== 'Your form expired. Please try again.' && http_response_code() !== 503) {
     try {
         $wait = login_locked_seconds();
     } catch (PDOException $ex) {

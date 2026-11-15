@@ -7,10 +7,18 @@ require_once __DIR__ . '/../includes/share_buttons.php';
 $id  = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);   // a whole number, 1 or more
 $post = false;
 
-if ($id) {
-    $stmt = db()->prepare('SELECT id, title, content, created_at FROM posts WHERE id = ?');
-    $stmt->execute([$id]);
-    $post = $stmt->fetch();
+try {
+    if ($id) {
+        $stmt = db()->prepare('SELECT id, title, content, created_at FROM posts WHERE id = ?');
+        $stmt->execute([$id]);
+        $post = $stmt->fetch();
+    }
+
+    if ($post) {
+        share_platforms();   // loaded now (and remembered), so a database problem shows the error page, not half a page
+    }
+} catch (PDOException $ex) {
+    show_error_page($ex, 'post page');
 }
 
 if (!$post) {

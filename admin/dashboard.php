@@ -5,14 +5,18 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/stats.php';
 require_login();
 
-// read the filters, then get the numbers
-$f           = stats_filters($_GET);
-$r           = stats_collect($f);
-$chart       = stats_chart_data($r);
+// read the filters, then get the numbers (every database call is inside the try, before anything is printed)
+try {
+    $f           = stats_filters($_GET);
+    $r           = stats_collect($f);
+    $chart       = stats_chart_data($r);
+    $platforms   = share_platforms();
+    $meta        = stats_series_meta();
+    $pageLabel   = stats_page_label($f['post_id']);
+} catch (PDOException $ex) {
+    show_error_page($ex, 'admin dashboard');
+}
 $total       = $r['total'];
-$platforms   = share_platforms();
-$meta        = stats_series_meta();
-$pageLabel   = stats_page_label($f['post_id']);
 
 $fromStr = $f['from']->format('Y-m-d');
 $toStr   = $f['to']->format('Y-m-d');

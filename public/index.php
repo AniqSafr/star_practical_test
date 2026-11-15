@@ -44,13 +44,19 @@ if ($after) {
     $args = [];
 }
 
-$stmt = db()->prepare($sql);
-foreach ($args as $name => $value) {
-    $stmt->bindValue($name, $value, $name === ':i' ? PDO::PARAM_INT : PDO::PARAM_STR);
+try {
+    $stmt = db()->prepare($sql);
+    foreach ($args as $name => $value) {
+        $stmt->bindValue($name, $value, $name === ':i' ? PDO::PARAM_INT : PDO::PARAM_STR);
+    }
+    $stmt->bindValue(':limit', $perPage + 1, PDO::PARAM_INT);   // one extra row tells us if there is another page
+    $stmt->execute();
+    $rows = $stmt->fetchAll();
+
+    share_platforms();   // loaded now (and remembered), so a database problem shows the error page, not half a page
+} catch (PDOException $ex) {
+    show_error_page($ex, 'home page');
 }
-$stmt->bindValue(':limit', $perPage + 1, PDO::PARAM_INT);   // one extra row tells us if there is another page
-$stmt->execute();
-$rows = $stmt->fetchAll();
 
 $more  = count($rows) > $perPage;
 $posts = array_slice($rows, 0, $perPage);

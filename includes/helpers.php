@@ -80,3 +80,44 @@ function share_platforms(): array
 
     return $cache;
 }
+
+/**
+ * Shows a plain "something went wrong" page instead of a PHP error, which could reveal database details
+ * (host, database name, file paths). The real error is written to the server's error log.
+ * Used when a database call fails (see the try / catch blocks in the pages).
+ */
+function show_error_page(Throwable $ex, string $where, int $status = 500): never
+{
+    error_log($where . ' failed: ' . get_class($ex) . ': ' . $ex->getMessage());
+
+    if (!headers_sent()) {
+        http_response_code($status);
+        header('Cache-Control: no-store');
+        header('Content-Type: text/html; charset=utf-8');
+    }
+
+    echo '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
+       . '<meta name="viewport" content="width=device-width, initial-scale=1">'
+       . '<meta name="robots" content="noindex, nofollow"><title>Something went wrong</title>'
+       . '<style>body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;max-width:32rem;margin:15vh auto;padding:0 1rem;color:#222}</style>'
+       . '</head><body><h1>Something went wrong</h1>'
+       . '<p>The page could not be loaded. Please try again in a moment.</p>'
+       . '<p><a href="' . e($_SERVER['REQUEST_URI'] ?? '') . '">Try again</a></p></body></html>';
+    exit;
+}
+
+// Safety net: an error that no try / catch caught is logged and shown as the plain page above
+// (or as JSON for the endpoints that answer in JSON), never as a PHP error with file paths or passwords.
+set_exception_handler(static function (Throwable $ex): void {
+    foreach (headers_list() as $header) {
+        if (stripos($header, 'content-type: application/json') === 0) {
+            error_log('uncaught ' . get_class($ex) . ': ' . $ex->getMessage());
+            http_response_code(500);
+            echo json_encode(['error' => 'Server error.']);
+
+            return;
+        }
+    }
+
+    show_error_page($ex, 'uncaught error');
+});
