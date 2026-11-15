@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 // Data for the dashboard's "Page" search box: GET pages.php?q=text
-// Returns up to 15 matching pages as JSON, like [{"url": "...", "title": "..."}]
+// Returns up to 15 matching pages as JSON, like [{"id": "home" or a post id, "title": "...", "sub": "Post #12"}]
 
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/stats.php';
@@ -26,10 +26,7 @@ if (!is_string($q) || mb_strlen($q) > 100) {
 }
 
 try {
-    $rows = array_map(
-        static fn (array $r): array => ['url' => (string) $r['page_url'], 'title' => trim((string) ($r['page_title'] ?? ''))],
-        stats_page_search($q)
-    );
+    $rows = stats_page_search($q);
 } catch (PDOException $ex) {
     error_log('page search failed: ' . $ex->getMessage());
     http_response_code(500);

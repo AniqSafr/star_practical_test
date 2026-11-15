@@ -39,7 +39,9 @@ CREATE TABLE posts (
   content    TEXT          NOT NULL,                 -- the "body" of the post
   tags       VARCHAR(255)  NOT NULL DEFAULT '',      -- comma separated, e.g. history,american,crime
   created_at TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_posts_created (created_at, id)       -- the home page lists the newest posts first
+  INDEX idx_posts_created (created_at, id),      -- the home page lists the newest posts first
+  INDEX idx_posts_title (title),                 -- admin page search: titles that START with the typed text
+  FULLTEXT INDEX ft_posts_title (title)          -- admin page search: titles that contain a word starting with the typed text
 ) ENGINE=InnoDB;
 
 -- ------------------------------------------------------------
@@ -83,16 +85,33 @@ INSERT IGNORE INTO social_platforms
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS share_clicks (
   id         BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  post_id    INT UNSIGNED  NOT NULL DEFAULT 0,       -- posts.id of the page that was shared; 0 = the home page
   page_url   VARCHAR(2048) NOT NULL,
   page_title VARCHAR(255)  NULL,                     -- post title at the time of the click
   platform   VARCHAR(50)   NOT NULL,                 -- = social_platforms.slug
   clicked_at TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_clicked_at       (clicked_at),            -- latest clicks, MIN(clicked_at)
-  INDEX idx_clicked_platform (clicked_at, platform)   -- dashboard counts: the date range and the platform are both read from the index
+  INDEX idx_clicked_at       (clicked_at),            -- "Latest clicks": newest rows first, read straight from the index
+  INDEX idx_clicked_platform (clicked_at, platform),  -- date range + platform
+  INDEX idx_post_clicked     (post_id, clicked_at)    -- "Latest clicks" of one page
 ) ENGINE=InnoDB;
 
--- Upgrading a database that already has share_clicks (run once; the old index only had the platform, which is not selective):
---   ALTER TABLE share_clicks DROP INDEX idx_platform, ADD INDEX idx_clicked_platform (clicked_at, platform);
+-- ------------------------------------------------------------
+-- Clicks per day, per page and per social button (summary of share_clicks).
+-- The dashboard charts, numbers and "most shared pages" read THIS table, so they stay fast with tens of
+-- millions of clicks: it has one row per (day, page, platform) that had clicks, not one row per click.
+-- public/track_share.php adds 1 to the matching row every time it stores a click.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS share_clicks_daily (
+  click_date DATE             NOT NULL,
+  post_id    INT UNSIGNED     NOT NULL,              -- 0 = the home page
+  platform   VARCHAR(50)      NOT NULL,              -- = social_platforms.slug
+  clicks     INT UNSIGNED     NOT NULL DEFAULT 0,
+  PRIMARY KEY (click_date, post_id, platform),       -- the date range is read straight from the primary key
+  INDEX idx_daily_post (post_id, click_date)         -- the "Page" filter
+) ENGINE=InnoDB;
+
+-- Upgrading a database that already has share_clicks with data: do NOT re-import this file.
+-- Follow migrations/upgrade_post_id_daily.sql (adds post_id, creates the daily table, back-fills both).
 
 -- If share_clicks already existed with the old ENUM column, convert it (keeps your rows):
 ALTER TABLE share_clicks MODIFY platform VARCHAR(50) NOT NULL;

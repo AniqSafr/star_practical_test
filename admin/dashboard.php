@@ -12,7 +12,7 @@ $chart       = stats_chart_data($r);
 $total       = $r['total'];
 $platforms   = share_platforms();
 $meta        = stats_series_meta();
-$pageLabel   = stats_page_label($f['page']);
+$pageLabel   = stats_page_label($f['post_id']);
 
 $fromStr = $f['from']->format('Y-m-d');
 $toStr   = $f['to']->format('Y-m-d');

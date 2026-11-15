@@ -71,10 +71,10 @@
       if (!open) { active = -1; }
     };
 
-    // pick a page ('' = all pages) and reload with the new filter
-    var choose = function (url, label) {
-      var changed = url !== pValue.value;
-      pValue.value = url;
+    // pick a page ('' = all pages, 'home' = the home page, or a post id) and reload with the new filter
+    var choose = function (value, label) {
+      var changed = value !== pValue.value;
+      pValue.value = value;
       pInput.value = label;
       pLabel = label;
       setOpen(false);
@@ -92,10 +92,10 @@
       items[active].scrollIntoView({ block: 'nearest' });
     };
 
-    var addItem = function (url, title, sub) {
+    var addItem = function (value, title, sub) {
       var li = document.createElement('li');
       li.setAttribute('role', 'option');
-      li.dataset.url = url;
+      li.dataset.value = value;
       li.dataset.label = title;
       var t = document.createElement('span');   // textContent, so a title is never read as HTML
       t.className = 'combo-title';
@@ -119,7 +119,7 @@
           pList.innerHTML = '';
           addItem('', 'All pages', '');
           rows.forEach(function (row) {
-            addItem(row.url, row.title !== '' ? row.title : row.url, row.title !== '' ? row.url : '');
+            addItem(row.id, row.title, row.sub);
           });
           if (!rows.length && q !== '') {
             var none = document.createElement('li');
@@ -149,7 +149,7 @@
         e.preventDefault();   // never submit the form by accident
         if (!pList.hidden && active >= 0) {
           var li = pList.children[active];
-          choose(li.dataset.url, li.dataset.url === '' ? '' : li.dataset.label);
+          choose(li.dataset.value, li.dataset.value === '' ? '' : li.dataset.label);
         }
       } else if (e.key === 'Escape') {
         setOpen(false);
@@ -160,7 +160,7 @@
       var li = e.target.closest ? e.target.closest('li[role=option]') : null;
       if (!li) { return; }
       e.preventDefault();
-      choose(li.dataset.url, li.dataset.url === '' ? '' : li.dataset.label);
+      choose(li.dataset.value, li.dataset.value === '' ? '' : li.dataset.label);
     });
     pInput.addEventListener('blur', function () {
       setOpen(false);

@@ -82,6 +82,7 @@ $pageUrl = explode('#', $pageUrl, 2)[0];
 // 6) ... and be a real page: the home page, or an existing post
 $path      = (string) ($parts['path'] ?? '');
 $pageTitle = null;
+$postId    = 0;      // posts.id of the shared page; 0 = the home page
 
 try {
     if (str_ends_with($path, '/post.php')) {
@@ -100,18 +101,38 @@ try {
         if ($pageTitle === false) {
             respond(422, ['ok' => false, 'error' => 'Unknown page.']);
         }
+
+        $postId = (int) $postId;
     } elseif (str_ends_with($path, '/index.php') || str_ends_with($path, '/')) {
         $pageTitle = 'Home';
     } else {
         respond(422, ['ok' => false, 'error' => 'Unknown page.']);
     }
 
-    // 7) store it (prepared statement = safe from SQL injection)
-    $stmt = db()->prepare(
-        'INSERT INTO share_clicks (page_url, page_title, platform) VALUES (?, ?, ?)'
+    // 7) store it (prepared statements = safe from SQL injection).
+    // The click row and the daily summary row (share_clicks_daily, read by the dashboard) are saved together:
+    // both are stored or neither is, so the dashboard numbers always match the clicks.
+    $pdo = db();
+    $pdo->beginTransaction();
+
+    $stmt = $pdo->prepare(
+        'INSERT INTO share_clicks (post_id, page_url, page_title, platform) VALUES (?, ?, ?, ?)'
     );
-    $stmt->execute([$pageUrl, $pageTitle, $platform]);
+    $stmt->execute([$postId, $pageUrl, $pageTitle, $platform]);
+
+    // The day comes from the click row just stored, so both tables always agree on the date.
+    $daily = $pdo->prepare(
+        'INSERT INTO share_clicks_daily (click_date, post_id, platform, clicks)
+         SELECT DATE(clicked_at), post_id, platform, 1 FROM share_clicks WHERE id = ?
+         ON DUPLICATE KEY UPDATE clicks = clicks + 1'
+    );
+    $daily->execute([(int) $pdo->lastInsertId()]);
+
+    $pdo->commit();
 } catch (PDOException $ex) {
+    if (isset($pdo) && $pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
     error_log('share click insert failed: ' . $ex->getMessage());
     respond(500, ['ok' => false, 'error' => 'Could not save the click.']);
 }
