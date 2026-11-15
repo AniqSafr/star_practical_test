@@ -324,6 +324,27 @@ function stats_collect(array $f): array
     ];
 }
 
+// The rows of the CSV export: one row per day, page and platform with clicks, for the dashboard's filters (the "Group by"
+// setting does not apply). It reads the daily summary table in primary key order, so the database does no sorting, and it
+// is NOT buffered: PHP receives the rows one at a time while they are written to the file, so memory stays small however
+// many rows there are. Fetch every row before running another query on the same connection.
+function stats_export_statement(array $f): PDOStatement
+{
+    $pdo = db();
+    [$where, $params] = stats_where_daily($f);
+
+    $pdo->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, false);
+
+    $st = $pdo->prepare(
+        "SELECT d.click_date, d.post_id, p.title, d.platform, d.clicks
+         FROM share_clicks_daily d LEFT JOIN posts p ON p.id = d.post_id
+         WHERE $where ORDER BY d.click_date, d.post_id, d.platform"
+    );
+    $st->execute($params);
+
+    return $st;
+}
+
 // Letters and digits of the typed text (3 or more characters each, at most 5 words). Nothing else gets through,
 // so a typed + - * " ( ) is never read as a search operator.
 function stats_search_words(string $q): array
