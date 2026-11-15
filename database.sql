@@ -38,7 +38,8 @@ CREATE TABLE posts (
   title      VARCHAR(150)  NOT NULL,
   content    TEXT          NOT NULL,                 -- the "body" of the post
   tags       VARCHAR(255)  NOT NULL DEFAULT '',      -- comma separated, e.g. history,american,crime
-  created_at TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_posts_created (created_at, id)       -- the home page lists the newest posts first
 ) ENGINE=InnoDB;
 
 -- ------------------------------------------------------------
@@ -86,9 +87,12 @@ CREATE TABLE IF NOT EXISTS share_clicks (
   page_title VARCHAR(255)  NULL,                     -- post title at the time of the click
   platform   VARCHAR(50)   NOT NULL,                 -- = social_platforms.slug
   clicked_at TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_platform   (platform),
-  INDEX idx_clicked_at (clicked_at)
+  INDEX idx_clicked_at       (clicked_at),            -- latest clicks, MIN(clicked_at)
+  INDEX idx_clicked_platform (clicked_at, platform)   -- dashboard counts: the date range and the platform are both read from the index
 ) ENGINE=InnoDB;
+
+-- Upgrading a database that already has share_clicks (run once; the old index only had the platform, which is not selective):
+--   ALTER TABLE share_clicks DROP INDEX idx_platform, ADD INDEX idx_clicked_platform (clicked_at, platform);
 
 -- If share_clicks already existed with the old ENUM column, convert it (keeps your rows):
 ALTER TABLE share_clicks MODIFY platform VARCHAR(50) NOT NULL;

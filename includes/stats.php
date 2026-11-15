@@ -226,27 +226,37 @@ function stats_collect(array $f): array
     }
 
     // 3) most shared pages (top 10), split by platform
+    // The database picks the top 10 first, so only 10 pages are loaded however many pages have clicks.
     $st = $pdo->prepare(
-        "SELECT page_url, MAX(page_title) AS page_title, platform, COUNT(*) AS c
-         FROM share_clicks WHERE $where GROUP BY page_url, platform"
+        "SELECT page_url, MAX(page_title) AS page_title, COUNT(*) AS c
+         FROM share_clicks WHERE $where GROUP BY page_url ORDER BY c DESC, page_url LIMIT 10"
     );
     $st->execute($params);
     $pages = [];
     foreach ($st->fetchAll() as $r) {
-        $url = (string) $r['page_url'];
-        $k   = $keyOf((string) $r['platform']);
-        $pages[$url]['url']          = $url;
-        $pages[$url]['title']        = $pages[$url]['title'] ?? (string) ($r['page_title'] ?? '');
-        $pages[$url]['total']        = ($pages[$url]['total'] ?? 0) + (int) $r['c'];
-        $pages[$url]['by'][$k]       = ($pages[$url]['by'][$k] ?? 0) + (int) $r['c'];
+        $url         = (string) $r['page_url'];
+        $pages[$url] = ['url' => $url, 'title' => (string) ($r['page_title'] ?? ''), 'total' => (int) $r['c'], 'by' => []];
     }
-    uasort($pages, static fn (array $a, array $b): int => $b['total'] <=> $a['total']);
-    $pages = array_slice(array_values($pages), 0, 10);
 
-    // 4) latest clicks
+    // then the platform split, only for those pages
+    if ($pages) {
+        $in = implode(',', array_fill(0, count($pages), '?'));
+        $st = $pdo->prepare(
+            "SELECT page_url, platform, COUNT(*) AS c FROM share_clicks
+             WHERE $where AND page_url IN ($in) GROUP BY page_url, platform"
+        );
+        $st->execute(array_merge($params, array_map('strval', array_keys($pages))));
+        foreach ($st->fetchAll() as $r) {
+            $k = $keyOf((string) $r['platform']);
+            $pages[(string) $r['page_url']]['by'][$k] = ($pages[(string) $r['page_url']]['by'][$k] ?? 0) + (int) $r['c'];
+        }
+    }
+    $pages = array_values($pages);
+
+    // 4) latest clicks (ordered by clicked_at so the database reads just the newest rows of the date range from the index)
     $st = $pdo->prepare(
         "SELECT page_url, page_title, platform, clicked_at
-         FROM share_clicks WHERE $where ORDER BY id DESC LIMIT 50"
+         FROM share_clicks WHERE $where ORDER BY clicked_at DESC, id DESC LIMIT 50"
     );
     $st->execute($params);
     $recent = $st->fetchAll();

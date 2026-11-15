@@ -198,3 +198,9 @@ td.url .muted { margin: 0; font-size: .8rem; }
 .combo-sub { color: var(--muted); font-size: .78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .combo-list .combo-empty { color: var(--muted); cursor: default; }
 .combo-list .combo-empty:hover { background: none; }
+
+/* ---------- Pagination (home page) ---------- */
+.pager { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px; margin: 28px 0 8px; }
+.pager a { padding: 8px 16px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--text); text-align: center; text-decoration: none; font-size: .92rem; }
+.pager a:hover { border-color: var(--primary); color: var(--primary); }
+
