@@ -5,7 +5,8 @@ Requires **PHP 8.1 or newer** and MySQL / MariaDB (XAMPP includes both).
 ## Features
 
 **Front-end**
-- Home page with the news posts in cards (3 per row), and a page for each post.
+- Home page with the news posts in cards (3 per row), and a page for each post. "Back to all posts" returns to the
+  same page of the list (and scroll position) the visitor came from.
   The home page uses keyset (cursor) pagination with **Newer / Older** links, so every page loads equally fast
   however many posts there are (no page numbers, no `COUNT(*)`).
 - Share buttons (icons) on every post card and under each post title.
@@ -26,6 +27,7 @@ Requires **PHP 8.1 or newer** and MySQL / MariaDB (XAMPP includes both).
   plus a "Latest clicks" table (newest 50).
 - Filters that apply to every chart, number and table: date range (quick ranges or custom dates),
   social media (checkbox dropdown), page, and group by day / week / month.
+- **Change password** page (`admin/change_password.php`): asks for the current password, then the new one twice.
 - **Download CSV** button: the numbers for the current filters as a file (one row per day, page and social media).
   It opens in Excel and Google Sheets, and streams the rows, so it also works with a very large range.
 - The **Page** filter is a search box. It searches the post titles (or a post id) on the server and returns
@@ -50,6 +52,7 @@ Requires **PHP 8.1 or newer** and MySQL / MariaDB (XAMPP includes both).
 6. Open the admin: `http://localhost/share_tracker/admin/login.php`
    - Username: `admin`
    - Password: `Admin@12345`
+   - Change it straight away with **Change password** at the top of the dashboard.
 
 
 ## Testing the tracking
@@ -81,6 +84,7 @@ share_tracker/
     ├── login.php, dashboard.php, logout.php
     ├── pages.php              JSON for the dashboard's Page search box
     ├── export.php             CSV download of the dashboard numbers
+    ├── change_password.php    the admin changes their own password
     └── assets/
         ├── chart.umd.js       Chart.js (saved locally, works offline)
         └── dashboard.js       draws the charts, handles the filters
@@ -109,4 +113,7 @@ share_tracker/
   prepared statements, and only letters and digits are passed to the FULLTEXT search.
 - Database errors: every page that reads or writes the database has a try / catch. A failure is written to the server's error log and the visitor sees a plain "Something went wrong" page (or a JSON error for the endpoints), never a PHP error with passwords or file paths. A safety net in `includes/helpers.php` does the same for any error that is not caught.
 - No personal data is stored with a share click: only the page URL, its title, the platform and the time.
+- Change password: needs the current password, CSRF token, the same wrong-password limit as the login, a new
+  password of 10-72 characters (not the default one, not the username), and stores only a bcrypt hash.
+  A new session ID is issued after the change.
 - Admin session: logged out after 30 minutes without activity (`SESSION_IDLE_LIMIT` in `includes/auth.php`).

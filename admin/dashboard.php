@@ -72,6 +72,7 @@ $rangeText = $f['from']->format('j M Y') . ' – ' . $f['to']->format('j M Y');
         <h1>Share button statistics</h1>
         <div>
             <span class="muted">Logged in as <?= e($_SESSION['admin_user'] ?? 'admin') ?></span>
+            <a class="btn btn-light" href="change_password.php">Change password</a>
             <a class="btn btn-light" href="logout.php">Log out</a>
         </div>
     </div>

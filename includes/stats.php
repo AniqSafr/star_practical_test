@@ -395,6 +395,7 @@ function stats_page_search(string $q, int $limit = 15): array
         }
     }
 
+    $out = [];
     foreach ($found as $id => $title) {
         $out[] = ['id' => (string) $id, 'title' => $title, 'sub' => 'Post #' . $id];
     }

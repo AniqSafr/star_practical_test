@@ -96,6 +96,7 @@ main.container { padding-top: 28px; padding-bottom: 40px; }
 .login-box .btn { width: 100%; margin-top: 18px; }
 .btn-light { background: #e9edf2; color: var(--text); }
 .error { background: #fde8e8; color: #9b1c1c; padding: 10px 12px; border-radius: 6px; margin-bottom: 8px; }
+.success { background: #e3f6ea; color: #14633a; padding: 10px 12px; border-radius: 6px; margin-bottom: 8px; }
 
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 24px; }
 .stat { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
