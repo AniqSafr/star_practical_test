@@ -117,25 +117,38 @@ $locked = $wait > 0;
 </div>
 <?php if ($locked): ?>
 <script>
-// Counts down, then enables the form again (the server still checks the lock on every request).
+// Counts down until the lock expires, recalculating based on the actual time whenever the tab becomes visible to avoid timer delays; the server still validates every request.
 (function () {
-  var left = <?= (int) $wait ?>;
+  var end = Date.now() + <?= (int) $wait ?> * 1000;   // the moment the lock ends
   var btn = document.getElementById('login-btn');
   var inputs = document.querySelectorAll('#login-form input[type=text], #login-form input[type=password]');
-  function show() {
+  var note = document.querySelector('.error');
+  var timer = null;
+
+  function unlock() {
+    clearInterval(timer);
+    btn.disabled = false;
+    btn.textContent = 'Log in';
+    inputs.forEach(function (i) { i.disabled = false; });
+    if (note) { note.hidden = true; }   // the "too many attempts" message is out of date now
+  }
+
+  function tick() {
+    var ms = end - Date.now();
+    if (ms <= -1000) {      // one extra second, so the form never opens before the server does
+      unlock();
+      return;
+    }
+    var left = Math.max(0, Math.ceil(ms / 1000));
     var m = Math.floor(left / 60), s = left % 60;
     btn.textContent = 'Locked: try again in ' + m + ':' + (s < 10 ? '0' : '') + s;
   }
-  show();
-  var t = setInterval(function () {
-    left--;
-    if (left <= 0) {
-      clearInterval(t);
-      btn.disabled = false;
-      btn.textContent = 'Log in';
-      inputs.forEach(function (i) { i.disabled = false; });
-    } else { show(); }
-  }, 1000);
+
+  tick();
+  timer = setInterval(tick, 1000);
+  document.addEventListener('visibilitychange', tick);   // back to this tab
+  window.addEventListener('focus', tick);
+  window.addEventListener('pageshow', tick);             // page restored with the browser's back / forward button
 })();
 </script>
 <?php endif; ?>
