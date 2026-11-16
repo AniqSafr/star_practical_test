@@ -44,6 +44,11 @@ if (($_GET['title'] ?? null) !== slugify($post['title'])) {
 $pageTitle = $post['title'];
 $pageDesc  = mb_strimwidth(trim(preg_replace('/\s+/', ' ', strip_tags($post['content']))), 0, 160, '...');
 
+// Where "Back to all posts" goes: the page of the list the visitor came from
+$backUrl  = list_back_url();
+$fromList = $backUrl !== null;
+$backUrl  ??= 'index.php';
+
 require __DIR__ . '/../includes/header.php';
 ?>
 <article class="post">
@@ -53,6 +58,15 @@ require __DIR__ . '/../includes/header.php';
     <div class="post-body"><?= nl2br(e($post['content'])) ?></div>
 </article>
 
-<p><a href="index.php">&larr; Back to all posts</a></p>
+<p><a id="back-link" href="<?= e($backUrl) ?>">&larr; Back to all posts</a></p>
+<?php if ($fromList): ?>
+<script>
+// Came from the list: go back in the browser history, so the list shows the same page at the same scroll position.
+// (Without JavaScript, or in a new tab, the link above still opens the right page of the list.)
+document.getElementById('back-link').addEventListener('click', function (ev) {
+  if (history.length > 1) { ev.preventDefault(); history.back(); }
+});
+</script>
+<?php endif; ?>
 <?php
 require __DIR__ . '/../includes/footer.php';

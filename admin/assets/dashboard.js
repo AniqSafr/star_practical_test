@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  // ---- Filters: apply as soon as a filter changes (the Apply button still works without JavaScript) ----
+  // Filters: apply as soon as a filter changes (the Apply button still works without JavaScript) ----
   var form = document.getElementById('filters');
   if (form) {
     var multi   = document.getElementById('platform-filter');   // the "Social media" checkbox dropdown

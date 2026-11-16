@@ -4,11 +4,10 @@ declare(strict_types=1);
 require_once __DIR__ . '/helpers.php';
 
 
- // -Share buttons (icons only), built from the `social_platforms` table.
- // -To add or remove a social network, change that table.
+ // Share buttons (icons only), built from the `social_platforms` table.
+ // To add or remove a social network, change that table.
  
- /* "Metadata" (title, description, image) comes from the Open Graph tags in header.php,
-     which Facebook / WhatsApp / Telegram read when they fetch the shared URL.   */
+ // "Metadata" (title, description, image) comes from the Open Graph tags in header.php, which Facebook / WhatsApp / Telegram read when they fetch the shared URL.
 
 
 // Fill the placeholders of a platform's share_url_template (values are URL-encoded).

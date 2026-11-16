@@ -2,7 +2,6 @@
 declare(strict_types=1);
 
 // Data for the admin dashboard: reads the filters from the URL and returns the numbers the charts and tables need.
-//
 // Speed with millions of clicks: the charts and numbers are read from `share_clicks_daily` (one row per day, page and
 // platform), not from `share_clicks` (one row per click). A page is identified by its post id (0 = home page), never by
 // its URL or title. Only "Latest clicks" reads `share_clicks`, and only its newest 50 rows.
@@ -324,10 +323,10 @@ function stats_collect(array $f): array
     ];
 }
 
-// The rows of the CSV export: one row per day, page and platform with clicks, for the dashboard's filters (the "Group by"
-// setting does not apply). It reads the daily summary table in primary key order, so the database does no sorting, and it
-// is NOT buffered: PHP receives the rows one at a time while they are written to the file, so memory stays small however
-// many rows there are. Fetch every row before running another query on the same connection.
+// The rows of the CSV export: one row per day, page and platform with clicks, for the dashboard's filters (the "Group by" setting does not apply).
+// It reads the daily summary table in primary key order, so the database does no sorting, and it
+// is NOT buffered: PHP receives the rows one at a time while they are written to the file, so memory stays small however many rows there are.
+// Fetch every row before running another query on the same connection.
 function stats_export_statement(array $f): PDOStatement
 {
     $pdo = db();
@@ -354,13 +353,12 @@ function stats_search_words(string $q): array
     return array_slice(array_values(array_unique($m[0])), 0, 5);
 }
 
-// Pages for the "Page" filter's search box. Searches the `posts` table (never the clicks table) and returns only a few
-// matches, so the list stays small however many posts there are. Every row is ['id', 'title', 'sub']:
-// id = 'home' or the post id (the value the filter sends back), sub = the small grey text under the title.
-//   - nothing typed: the newest posts
-//   - a number: the post with that id
-//   - text: posts whose title STARTS with it (index idx_posts_title), then posts that contain a word STARTING with each
-//     typed word (FULLTEXT index ft_posts_title). Both use an index, so no search reads every post.
+// Searches posts for the Page filter and returns only a few results.
+// Each result contains the post ID, title and subtitle.
+// - Empty search: returns the newest posts.
+// - Number: finds the post with that ID.
+// - Text: finds titles that start with the text or contain words starting with each typed word.
+// Uses indexes to avoid scanning every post.
 function stats_page_search(string $q, int $limit = 15): array
 {
     $limit = max(1, min(50, $limit));
@@ -397,9 +395,6 @@ function stats_page_search(string $q, int $limit = 15): array
         }
     }
 
-    // (The home page has no share buttons, so it is not offered here. If you add some, offer it again with
-    // ['id' => 'home', 'title' => 'Home', 'sub' => 'Home page'].)
-    $out = [];
     foreach ($found as $id => $title) {
         $out[] = ['id' => (string) $id, 'title' => $title, 'sub' => 'Post #' . $id];
     }

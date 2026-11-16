@@ -60,10 +60,7 @@ function post_path(int $id, string $title): string
     return 'post.php?id=' . $id . '&title=' . slugify($title);
 }
 
-/**
- * Social media platforms from the `social_platforms` table: slug => row,
- * in sort_order. These are the share buttons shown on the site.
- */
+// Social media platforms from the `social_platforms` table: slug => row, in sort_order. These are the share buttons shown on the site.
 function share_platforms(): array
 {
     static $cache = null;
@@ -81,11 +78,8 @@ function share_platforms(): array
     return $cache;
 }
 
-/**
- * Shows a plain "something went wrong" page instead of a PHP error, which could reveal database details
- * (host, database name, file paths). The real error is written to the server's error log.
- * Used when a database call fails (see the try / catch blocks in the pages).
- */
+// Shows a plain "something went wrong" page instead of a PHP error, which could reveal database details (host, database name, file paths).
+// The real error is written to the server's error log. Used when a database call fails (see the try / catch blocks in the pages).
 function show_error_page(Throwable $ex, string $where, int $status = 500): never
 {
     error_log($where . ' failed: ' . get_class($ex) . ': ' . $ex->getMessage());
@@ -121,3 +115,51 @@ set_exception_handler(static function (Throwable $ex): void {
 
     show_error_page($ex, 'uncaught error');
 });
+
+// A cursor looks like "2026-11-14 10:30:00_57" (created_at + id of a post). Anything else is ignored.
+function post_cursor(mixed $value): ?array
+{
+    if (!is_string($value) || !preg_match('/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})_(\d{1,10})$/', $value, $m)) {
+        return null;
+    }
+
+    $d = DateTimeImmutable::createFromFormat('!Y-m-d H:i:s', $m[1]);
+
+    return ($d && $d->format('Y-m-d H:i:s') === $m[1]) ? ['created_at' => $m[1], 'id' => (int) $m[2]] : null;
+}
+
+function cursor_of(array $post): string
+{
+    return $post['created_at'] . '_' . $post['id'];
+}
+
+// The page of the home page list that the visitor came from (with its Older / Newer cursor), read from the Referer header,
+// so "Back to all posts" returns to that page and not always to the first one. null = they did not come from the list.
+// Only this site's own list is accepted, and only a valid cursor is copied: nothing else from the Referer is ever used.
+function list_back_url(): ?string
+{
+    $ref = $_SERVER['HTTP_REFERER'] ?? '';
+    if (!is_string($ref) || $ref === '' || strlen($ref) > 500) {
+        return null;
+    }
+
+    $r    = parse_url($ref);
+    $host = parse_url('//' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST);
+    if (!is_array($r) || empty($r['host']) || !is_string($host) || strcasecmp($r['host'], $host) !== 0) {
+        return null;
+    }
+
+    $dir = rtrim(str_replace('\\', '/', dirname((string) ($_SERVER['SCRIPT_NAME'] ?? ''))), '/');
+    if (!in_array((string) ($r['path'] ?? ''), [$dir . '/index.php', $dir . '/'], true)) {
+        return null;
+    }
+
+    parse_str((string) ($r['query'] ?? ''), $q);
+    foreach (['before', 'after'] as $key) {
+        if (post_cursor($q[$key] ?? null) !== null) {
+            return 'index.php?' . $key . '=' . rawurlencode((string) $q[$key]);
+        }
+    }
+
+    return 'index.php';   // the first page of the list
+}

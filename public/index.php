@@ -8,23 +8,6 @@ require_once __DIR__ . '/../includes/share_buttons.php';
 // shown, so the database never skips over rows. It costs the same on page 1 and page 100000, and it does not need COUNT(*).
 $perPage = 12;
 
-// A cursor looks like "2026-11-14 10:30:00_57" (created_at + id of a post). Anything else is ignored.
-function post_cursor(mixed $value): ?array
-{
-    if (!is_string($value) || !preg_match('/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})_(\d{1,10})$/', $value, $m)) {
-        return null;
-    }
-
-    $d = DateTimeImmutable::createFromFormat('!Y-m-d H:i:s', $m[1]);
-
-    return ($d && $d->format('Y-m-d H:i:s') === $m[1]) ? ['created_at' => $m[1], 'id' => (int) $m[2]] : null;
-}
-
-function cursor_of(array $post): string
-{
-    return $post['created_at'] . '_' . $post['id'];
-}
-
 $before = post_cursor($_GET['before'] ?? null);                  // ?before=... = older posts
 $after  = $before ? null : post_cursor($_GET['after'] ?? null);  // ?after=...  = back to newer posts
 
@@ -107,8 +90,8 @@ require __DIR__ . '/../includes/header.php';
 
 <?php if ($newerUrl || $olderUrl): ?>
     <nav class="pager" aria-label="Pages of posts">
-        <?php if ($newerUrl): ?><a href="<?= e($newerUrl) ?>" rel="prev">&larr; Previous</a><?php endif; ?>
-        <?php if ($olderUrl): ?><a href="<?= e($olderUrl) ?>" rel="next">Next &rarr;</a><?php endif; ?>
+        <?php if ($newerUrl): ?><a href="<?= e($newerUrl) ?>" rel="prev">&larr; Newer</a><?php endif; ?>
+        <?php if ($olderUrl): ?><a href="<?= e($olderUrl) ?>" rel="next">Older &rarr;</a><?php endif; ?>
     </nav>
 <?php endif; ?>
 
